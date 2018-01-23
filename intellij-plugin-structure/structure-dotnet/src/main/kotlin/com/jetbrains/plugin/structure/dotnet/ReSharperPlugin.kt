@@ -11,5 +11,9 @@ data class ReSharperPlugin(
     override val description: String?,
     override val vendor: String?,
     override val vendorEmail: String?,
-    override val vendorUrl: String?
+    override val vendorUrl: String?,
+
+    val dependencies: List<DotNetDependency>
 ) : Plugin
+
+data class DotNetDependency(val id: String, val versionRange: String)
