@@ -13,6 +13,8 @@ data class ReSharperPlugin(
     override val vendorEmail: String?,
     override val vendorUrl: String?,
 
+    val licenseUrl: String?,
+    val copyright: String?,
     val dependencies: List<DotNetDependency>
 ) : Plugin
 

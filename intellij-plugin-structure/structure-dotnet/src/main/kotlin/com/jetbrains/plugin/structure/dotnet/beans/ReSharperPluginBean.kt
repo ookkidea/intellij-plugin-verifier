@@ -15,6 +15,8 @@ class ReSharperPluginBean {
   val description by JXML / "metadata" / "description" / XText
   val url by JXML / "metadata" / "projectUrl" / XText
   val changeNotes by JXML / "metadata" / "releaseNotes" / XText
+  val licenseUrl by JXML / "metadata" / "licenseUrl" / XText
+  val copyright by JXML / "metadata" / "copyright" / XText
   val dependencies by JXML / "metadata" / "dependencies" / XElements("dependency") / XSub(DotNetDependencyBean::class.java)
 }
 
@@ -35,6 +37,7 @@ fun ReSharperPluginBean.toPlugin(): ReSharperPlugin {
   return ReSharperPlugin(
       pluginId = id, pluginName = pluginName, vendor = vendor, pluginVersion = this.version!!, url = this.url,
       changeNotes = this.changeNotes, description = this.description, vendorEmail = null, vendorUrl = null,
+      licenseUrl = licenseUrl, copyright = copyright,
       dependencies = dependencies?.map { DotNetDependency(it.id!!, it.version!!) } ?: emptyList()
   )
 }
