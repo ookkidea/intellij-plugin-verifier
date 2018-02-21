@@ -10,6 +10,7 @@ import org.jonnyzzz.kotlin.xml.bind.jdom.JXML
 
 class ReSharperPluginBean {
   val id by JXML / "metadata" / "id" / XText
+  val title by JXML / "metadata" / "title" / XText
   val version by JXML / "metadata" / "version" / XText
   val description by JXML / "metadata" / "description" / XText
   val url by JXML / "metadata" / "projectUrl" / XText
@@ -26,7 +27,11 @@ fun ReSharperPluginBean.toPlugin(): ReSharperPlugin {
   val id = this.id!!
   val idParts = id.split('.')
   val vendor = if (idParts.size > 1) idParts[0] else null
-  val pluginName = if (idParts.size > 1) idParts[1] else id
+  val pluginName = when {
+    title != null -> title!!
+    idParts.size > 1 -> idParts[1]
+    else -> id
+  }
   return ReSharperPlugin(
       pluginId = id, pluginName = pluginName, vendor = vendor, pluginVersion = this.version!!, url = this.url,
       changeNotes = this.changeNotes, description = this.description, vendorEmail = null, vendorUrl = null,
