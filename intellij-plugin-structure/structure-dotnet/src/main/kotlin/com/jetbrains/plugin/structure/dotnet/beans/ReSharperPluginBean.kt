@@ -22,20 +22,14 @@ class DotNetDependencyBean {
   val version by JXML / XAttribute("version")
 }
 
-fun ReSharperPluginBean.toPlugin() = ReSharperPlugin(
-    pluginId = this.id!!,
-    pluginName = this.id?.split(".")?.get(1)!!,
-    vendor = this.id?.split(".")?.get(0)!!,
-    pluginVersion = this.version!!,
-    url = this.url,
-    changeNotes = this.changeNotes,
-    description = this.description,
-    vendorEmail = null,
-    vendorUrl = null,
-    dependencies = dependencies?.map { DotNetDependency(it.id!!, it.version!!) } ?: emptyList()
-//    sinceBuild = this.minBuild?.toLong()?.let { TeamcityVersion(it) },
-//    untilBuild = this.maxBuild?.toLong()?.let { TeamcityVersion(it) },
-//    downloadUrl = this.downloadUrl,
-//    useSeparateClassLoader = this.useSeparateClassLoader?.toBoolean() ?: false,
-//    parameters = this.parameters?.associate { it.name!! to it.value!! }
-)
+fun ReSharperPluginBean.toPlugin(): ReSharperPlugin {
+  val id = this.id!!
+  val idParts = id.split('.')
+  val vendor = if (idParts.size > 1) idParts[0] else null
+  val pluginName = if (idParts.size > 1) idParts[1] else id
+  return ReSharperPlugin(
+      pluginId = id, pluginName = pluginName, vendor = vendor, pluginVersion = this.version!!, url = this.url,
+      changeNotes = this.changeNotes, description = this.description, vendorEmail = null, vendorUrl = null,
+      dependencies = dependencies?.map { DotNetDependency(it.id!!, it.version!!) } ?: emptyList()
+  )
+}
