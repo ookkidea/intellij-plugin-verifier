@@ -10,8 +10,9 @@ internal fun validateDotNetPluginBean(bean: ReSharperPluginBean): List<PluginPro
 
   val dependencies = bean.dependencies
   val id = bean.id
+  val description = bean.description
 
-  if(id.isNullOrBlank()) {
+  if (id.isNullOrBlank()) {
     problems.add(PropertyNotSpecified("id"))
   }
 
@@ -20,5 +21,18 @@ internal fun validateDotNetPluginBean(bean: ReSharperPluginBean): List<PluginPro
       problems.add(InvalidIdError)
     }
   }
+
+  if (bean.version.isNullOrBlank()) {
+    problems.add(PropertyNotSpecified("version"))
+  }
+
+  if (bean.authors.isNullOrBlank()) {
+    problems.add(PropertyNotSpecified("description"))
+  }
+
+  if (description.isNullOrBlank()) {
+    problems.add(PropertyNotSpecified("description"))
+  }
+
   return problems
 }
