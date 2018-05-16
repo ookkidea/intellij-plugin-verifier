@@ -27,7 +27,7 @@ internal fun validateDotNetPluginBean(bean: ReSharperPluginBean): List<PluginPro
   }
 
   if (bean.authors.isNullOrBlank()) {
-    problems.add(PropertyNotSpecified("description"))
+    problems.add(PropertyNotSpecified("authors"))
   }
 
   if (description.isNullOrBlank()) {
