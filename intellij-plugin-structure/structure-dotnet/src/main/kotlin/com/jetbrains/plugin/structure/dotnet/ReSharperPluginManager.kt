@@ -4,6 +4,7 @@ import com.jetbrains.plugin.structure.base.plugin.*
 import com.jetbrains.plugin.structure.base.problems.*
 import com.jetbrains.plugin.structure.dotnet.beans.extractPluginBean
 import com.jetbrains.plugin.structure.dotnet.beans.toPlugin
+import com.jetbrains.plugin.structure.dotnet.problems.IncorrectDotNetPluginFile
 import org.jdom2.input.JDOMParseException
 import org.slf4j.LoggerFactory
 import java.io.File
@@ -22,7 +23,7 @@ object ReSharperPluginManager : PluginManager<ReSharperPlugin> {
     }
     return when (pluginFile.extension) {
       "nupkg" -> loadDescriptorFromZip(pluginFile)
-      else -> PluginCreationFail(IncorrectPluginFile(pluginFile))
+      else -> PluginCreationFail(IncorrectDotNetPluginFile(pluginFile))
     }
   }
 
