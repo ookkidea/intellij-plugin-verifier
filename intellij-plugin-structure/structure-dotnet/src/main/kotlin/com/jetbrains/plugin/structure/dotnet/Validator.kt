@@ -34,5 +34,9 @@ internal fun validateDotNetPluginBean(bean: ReSharperPluginBean): List<PluginPro
     problems.add(PropertyNotSpecified("description"))
   }
 
+  if (bean.licenseUrl.isNullOrBlank()) {
+    problems.add(PropertyNotSpecified("license url"))
+  }
+
   return problems
 }
