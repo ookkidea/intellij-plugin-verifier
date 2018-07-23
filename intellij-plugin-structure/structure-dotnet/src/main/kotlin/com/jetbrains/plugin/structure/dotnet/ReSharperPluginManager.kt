@@ -1,7 +1,10 @@
 package com.jetbrains.plugin.structure.dotnet
 
 import com.jetbrains.plugin.structure.base.plugin.*
-import com.jetbrains.plugin.structure.base.problems.*
+import com.jetbrains.plugin.structure.base.problems.PluginDescriptorIsNotFound
+import com.jetbrains.plugin.structure.base.problems.UnableToExtractZip
+import com.jetbrains.plugin.structure.base.problems.UnableToReadDescriptor
+import com.jetbrains.plugin.structure.base.problems.UnexpectedDescriptorElements
 import com.jetbrains.plugin.structure.dotnet.beans.extractPluginBean
 import com.jetbrains.plugin.structure.dotnet.beans.toPlugin
 import com.jetbrains.plugin.structure.dotnet.problems.IncorrectDotNetPluginFile
@@ -23,15 +26,15 @@ object ReSharperPluginManager : PluginManager<ReSharperPlugin> {
     }
     return when (pluginFile.extension) {
       "nupkg" -> loadDescriptorFromZip(pluginFile)
-      else -> PluginCreationFail(IncorrectDotNetPluginFile(pluginFile))
+      else -> PluginCreationFail(IncorrectDotNetPluginFile(pluginFile.name))
     }
   }
 
   private fun loadDescriptorFromZip(pluginFile: File): PluginCreationResult<ReSharperPlugin> = try {
     loadDescriptorFromZip(ZipFile(pluginFile))
   } catch (e: IOException) {
-    LOG.info("Unable to extract plugin zip: $pluginFile", e)
-    PluginCreationFail(UnableToExtractZip(pluginFile))
+    LOG.info("Unable to extract plugin zip", e)
+    PluginCreationFail(UnableToExtractZip())
   }
 
   private fun loadDescriptorFromZip(pluginFile: ZipFile): PluginCreationResult<ReSharperPlugin> {
