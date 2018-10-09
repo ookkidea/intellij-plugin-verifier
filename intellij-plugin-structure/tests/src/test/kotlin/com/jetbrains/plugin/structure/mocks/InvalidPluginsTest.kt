@@ -3,10 +3,7 @@ package com.jetbrains.plugin.structure.mocks
 import com.jetbrains.plugin.structure.base.plugin.PluginCreationFail
 import com.jetbrains.plugin.structure.base.plugin.PluginCreationSuccess
 import com.jetbrains.plugin.structure.base.plugin.PluginProblem
-import com.jetbrains.plugin.structure.base.problems.PluginDescriptorIsNotFound
-import com.jetbrains.plugin.structure.base.problems.PropertyNotSpecified
-import com.jetbrains.plugin.structure.base.problems.UnableToExtractZip
-import com.jetbrains.plugin.structure.base.problems.UnexpectedDescriptorElements
+import com.jetbrains.plugin.structure.base.problems.*
 import com.jetbrains.plugin.structure.base.utils.archiveDirectory
 import com.jetbrains.plugin.structure.intellij.plugin.IdePlugin
 import com.jetbrains.plugin.structure.intellij.plugin.IdePluginManager
@@ -384,6 +381,30 @@ class InvalidPluginsTest {
         perfectXmlBuilder.modify {
           ideaVersion = """<idea-version since-build="171.1" until-build="2018.*"/>"""
         }, listOf(ErroneousUntilBuild("plugin.xml", IdeVersion.createIdeVersion("2018.*")))
+    )
+  }
+
+  @Test
+  fun `invalid product descriptor`() {
+    `test invalid plugin xml`(
+        perfectXmlBuilder.modify {
+          productDescriptor = """<product-descriptor/>"""
+        },
+        listOf(
+            PropertyNotSpecified("code", "plugin.xml"),
+            PropertyNotSpecified("release-date", "plugin.xml"),
+            PropertyNotSpecified("release-version", "plugin.xml")
+        )
+    )
+
+    `test invalid plugin xml`(
+        perfectXmlBuilder.modify {
+          productDescriptor = """<product-descriptor code="ABC" release-date="not-date" release-version="not-int"/>"""
+        },
+        listOf(
+            ReleaseDateWrongFormat,
+            NotNumber("release-version", "plugin.xml")
+        )
     )
   }
 
