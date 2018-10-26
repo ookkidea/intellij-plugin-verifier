@@ -1,6 +1,7 @@
 package com.jetbrains.plugin.structure.dotnet
 
 import com.jetbrains.plugin.structure.base.plugin.Plugin
+import com.jetbrains.plugin.structure.base.plugin.PluginIcon
 
 data class ReSharperPlugin(
     override val pluginId: String,
@@ -18,6 +19,8 @@ data class ReSharperPlugin(
     val licenseUrl: String?,
     val copyright: String?,
     val dependencies: List<DotNetDependency>
-) : Plugin
+) : Plugin {
+  override val icons: List<PluginIcon> = emptyList()
+}
 
 data class DotNetDependency(val id: String, val versionRange: String)
