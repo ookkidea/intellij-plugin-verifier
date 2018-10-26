@@ -15,22 +15,30 @@ import com.jetbrains.pluginverifier.results.presentation.formatMethodLocation
 import java.util.*
 
 class DeprecatedMethodOverridden(
-    override val deprecatedElement: MethodLocation,
-    override val usageLocation: MethodLocation
-) : DeprecatedApiUsage() {
+    override val apiElement: MethodLocation,
+    override val usageLocation: MethodLocation,
+    deprecationInfo: DeprecationInfo
+) : DeprecatedApiUsage(deprecationInfo) {
   override val shortDescription
-    get() = "Deprecated method ${deprecatedElement.formatMethodLocation(FULL_HOST_NAME, SIMPLE_PARAM_CLASS_NAME, NO_RETURN_TYPE, NO_PARAMETER_NAMES)} is overridden"
+    get() = "Deprecated method ${apiElement.formatMethodLocation(FULL_HOST_NAME, SIMPLE_PARAM_CLASS_NAME, NO_RETURN_TYPE, NO_PARAMETER_NAMES)} is overridden"
 
   override val fullDescription
-    get() = "Deprecated method ${deprecatedElement.formatMethodLocation(FULL_HOST_NAME, FULL_PARAM_CLASS_NAME, FULL_RETURN_TYPE_CLASS_NAME, WITH_PARAM_NAMES_IF_AVAILABLE)} is overridden in class ${usageLocation.hostClass.formatClassLocation(FULL_NAME, NO_GENERICS)}"
-
-  override val deprecatedElementType
-    get() = DeprecatedElementType.METHOD
+    get() = buildString {
+      append("Deprecated method ${apiElement.formatMethodLocation(FULL_HOST_NAME, FULL_PARAM_CLASS_NAME, FULL_RETURN_TYPE_CLASS_NAME, WITH_PARAM_NAMES_IF_AVAILABLE)}")
+      append(" is overridden in class ${usageLocation.hostClass.formatClassLocation(FULL_NAME, NO_GENERICS)}")
+      if (deprecationInfo.forRemoval) {
+        append(". This method will be removed in ")
+        append(deprecationInfo.untilVersion ?: " a future release")
+      }
+    }
 
   override fun equals(other: Any?) = other is DeprecatedMethodOverridden
-      && deprecatedElement == other.deprecatedElement
+      && apiElement == other.apiElement
       && usageLocation == other.usageLocation
 
-  override fun hashCode() = Objects.hash(deprecatedElement, usageLocation)
+  override fun hashCode() = Objects.hash(apiElement, usageLocation)
 
+  companion object {
+    private const val serialVersionUID = 0L
+  }
 }

@@ -5,6 +5,7 @@ import com.jetbrains.pluginverifier.dependencies.DependenciesGraph
 import com.jetbrains.pluginverifier.parameters.filtering.IgnoredProblemsHolder
 import com.jetbrains.pluginverifier.parameters.filtering.ProblemsFilter
 import com.jetbrains.pluginverifier.results.deprecated.DeprecatedApiUsage
+import com.jetbrains.pluginverifier.results.experimental.ExperimentalApiUsage
 import com.jetbrains.pluginverifier.results.problems.CompatibilityProblem
 import com.jetbrains.pluginverifier.results.structure.PluginStructureError
 import com.jetbrains.pluginverifier.results.structure.PluginStructureWarning
@@ -24,6 +25,8 @@ class ResultHolder {
 
   val deprecatedUsages: MutableSet<DeprecatedApiUsage> = hashSetOf()
 
+  val experimentalApiUsages: MutableSet<ExperimentalApiUsage> = hashSetOf()
+
   var dependenciesGraph: DependenciesGraph? = null
 
   val ignoredProblemsHolder = IgnoredProblemsHolder()
@@ -38,25 +41,27 @@ class ResultHolder {
 
   private val pluginErrorsAndWarnings: MutableSet<PluginProblem> = hashSetOf()
 
-  fun registerDeprecatedUsage(deprecatedApiUsage: DeprecatedApiUsage) {
-    if (deprecatedApiUsage !in deprecatedUsages) {
-      deprecatedUsages.add(deprecatedApiUsage)
-    }
+  fun addDeprecatedUsage(deprecatedApiUsage: DeprecatedApiUsage) {
+    deprecatedUsages.add(deprecatedApiUsage)
   }
 
-  fun registerProblem(problem: CompatibilityProblem) {
+  fun addExperimentalUsage(experimentalApiUsage: ExperimentalApiUsage) {
+    experimentalApiUsages.add(experimentalApiUsage)
+  }
+
+  fun addProblem(problem: CompatibilityProblem) {
     if (problem !in compatibilityProblems && !ignoredProblemsHolder.isIgnored(problem)) {
       compatibilityProblems.add(problem)
     }
   }
 
-  fun registerIgnoredProblem(problem: CompatibilityProblem, ignoreDecisions: List<ProblemsFilter.Result.Ignore>) {
+  fun addIgnoredProblem(problem: CompatibilityProblem, ignoreDecisions: List<ProblemsFilter.Result.Ignore>) {
     if (problem !in compatibilityProblems && !ignoredProblemsHolder.isIgnored(problem)) {
       ignoredProblemsHolder.registerIgnoredProblem(problem, ignoreDecisions)
     }
   }
 
-  fun registerPluginErrorOrWarning(errorOrWarning: PluginProblem) {
+  fun addPluginErrorOrWarning(errorOrWarning: PluginProblem) {
     if (errorOrWarning !in pluginErrorsAndWarnings) {
       pluginErrorsAndWarnings.add(errorOrWarning)
       if (errorOrWarning.level == PluginProblem.Level.WARNING) {
@@ -74,7 +79,7 @@ class ResultHolder {
     if (cycles.isNotEmpty()) {
       val nodes = cycles[0]
       val cyclePresentation = nodes.joinToString(separator = " -> ") + " -> " + nodes[0]
-      registerPluginErrorOrWarning(DependenciesCycleWarning(cyclePresentation))
+      addPluginErrorOrWarning(DependenciesCycleWarning(cyclePresentation))
     }
   }
 

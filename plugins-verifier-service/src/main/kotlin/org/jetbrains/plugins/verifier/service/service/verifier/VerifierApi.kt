@@ -11,11 +11,9 @@ import com.jetbrains.pluginverifier.dependencies.MissingDependency
 import com.jetbrains.pluginverifier.repository.repositories.marketplace.UpdateInfo
 import com.jetbrains.pluginverifier.results.VerificationResult
 import com.jetbrains.pluginverifier.results.deprecated.DeprecatedApiUsage
-import com.jetbrains.pluginverifier.results.deprecated.DeprecatedElementType
-import com.jetbrains.pluginverifier.results.location.ClassLocation
-import com.jetbrains.pluginverifier.results.location.FieldLocation
-import com.jetbrains.pluginverifier.results.location.Location
-import com.jetbrains.pluginverifier.results.location.MethodLocation
+import com.jetbrains.pluginverifier.results.deprecated.DeprecationInfo
+import com.jetbrains.pluginverifier.results.experimental.ExperimentalApiUsage
+import com.jetbrains.pluginverifier.results.location.*
 import com.jetbrains.pluginverifier.results.presentation.*
 import com.jetbrains.pluginverifier.results.problems.CompatibilityProblem
 import com.jetbrains.pluginverifier.results.structure.PluginStructureError
@@ -30,6 +28,7 @@ fun VerificationResult.prepareVerificationResponse(updateInfo: UpdateInfo): Veri
   val pluginStructureWarnings = getPluginStructureWarnings().map { it.convertPluginStructureWarning() }
   val pluginStructureErrors = (this as? VerificationResult.InvalidPlugin)?.pluginStructureErrors.orEmpty().map { it.convertPluginStructureError() }
   val deprecatedUsages = getDeprecatedUsages().map { it.convertDeprecatedApiUsage() }
+  val experimentalApiUsages = getExperimentalApiUsages().map { it.convertExperimentalApiUsage() }
   val dependenciesGraph = getDependenciesGraph()?.let { convertDependencyGraph(it) }
   val resultType = convertResultType()
   val compatibilityProblems = problems.map { it.convertCompatibilityProblem() }
@@ -43,6 +42,7 @@ fun VerificationResult.prepareVerificationResponse(updateInfo: UpdateInfo): Veri
       .addAllPluginStructureWarnings(pluginStructureWarnings)
       .addAllPluginStructureErrors(pluginStructureErrors)
       .addAllDeprecatedUsages(deprecatedUsages)
+      .addAllExperimentalApiUsages(experimentalApiUsages)
       .addAllCompatibilityProblems(compatibilityProblems)
       .apply { if (nonDownloadableReason != null) setNonDownloadableReason(nonDownloadableReason) }
       .build()
@@ -103,6 +103,18 @@ private fun VerificationResult.getDeprecatedUsages() = with(this) {
   }
 }
 
+private fun VerificationResult.getExperimentalApiUsages() = with(this) {
+  when (this) {
+    is VerificationResult.OK -> experimentalApiUsages
+    is VerificationResult.StructureWarnings -> experimentalApiUsages
+    is VerificationResult.MissingDependencies -> experimentalApiUsages
+    is VerificationResult.CompatibilityProblems -> experimentalApiUsages
+    is VerificationResult.InvalidPlugin -> emptySet()
+    is VerificationResult.NotFound -> emptySet()
+    is VerificationResult.FailedToDownload -> emptySet()
+  }
+}
+
 private fun VerificationResult.getCompatibilityProblems() = with(this) {
   when (this) {
     is VerificationResult.OK -> emptySet()
@@ -138,19 +150,38 @@ private fun DeprecatedApiUsage.convertDeprecatedApiUsage() =
     VerificationResults.DeprecatedApiUsage.newBuilder()
         .setShortDescription(shortDescription)
         .setFullDescription(fullDescription)
-        .setDeprecatedElement(deprecatedElement.presentableDeprecatedElement())
+        .setDeprecatedElement(apiElement.fullyQualifiedLocation())
         .setUsageLocation(usageLocation.presentableUsageLocation())
-        .setDeprecatedElementType(deprecatedElementType.convertDeprecatedElementType())
+        .setElementType(apiElement.elementType.convertElementType())
+        .setDeprecationInfo(deprecationInfo.convertDeprecationInfo())
         .build()
 
-private fun DeprecatedElementType.convertDeprecatedElementType() = when (this) {
-  DeprecatedElementType.CLASS -> VerificationResults.DeprecatedApiUsage.DeprecatedElementType.CLASS
-  DeprecatedElementType.METHOD -> VerificationResults.DeprecatedApiUsage.DeprecatedElementType.METHOD
-  DeprecatedElementType.FIELD -> VerificationResults.DeprecatedApiUsage.DeprecatedElementType.FIELD
-  DeprecatedElementType.CONSTRUCTOR -> VerificationResults.DeprecatedApiUsage.DeprecatedElementType.CONSTRUCTOR
+private fun DeprecationInfo.convertDeprecationInfo() =
+    VerificationResults.DeprecatedApiUsage.DeprecationInfo.newBuilder()
+        .setForRemoval(forRemoval)
+        .setUntilVersion(untilVersion ?: "")
+        .build()
+
+private fun ExperimentalApiUsage.convertExperimentalApiUsage() =
+    VerificationResults.ExperimentalApiUsage.newBuilder()
+        .setShortDescription(shortDescription)
+        .setFullDescription(fullDescription)
+        .setApiElement(apiElement.fullyQualifiedLocation())
+        .setUsageLocation(usageLocation.presentableUsageLocation())
+        .setApiElementType(apiElement.elementType.convertElementType())
+        .build()
+
+private fun ElementType.convertElementType() = when (this) {
+  ElementType.CLASS -> VerificationResults.ElementType.CLASS
+  ElementType.INTERFACE -> VerificationResults.ElementType.INTERFACE
+  ElementType.ENUM -> VerificationResults.ElementType.ENUM
+  ElementType.ANNOTATION -> VerificationResults.ElementType.ANNOTATION
+  ElementType.METHOD -> VerificationResults.ElementType.METHOD
+  ElementType.FIELD -> VerificationResults.ElementType.FIELD
+  ElementType.CONSTRUCTOR -> VerificationResults.ElementType.CONSTRUCTOR
 }
 
-private fun Location.presentableDeprecatedElement(): String = when (this) {
+private fun Location.fullyQualifiedLocation(): String = when (this) {
   is ClassLocation -> formatClassLocation(
       ClassOption.FULL_NAME,
       ClassGenericsSignatureOption.NO_GENERICS

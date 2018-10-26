@@ -3,8 +3,8 @@ package com.jetbrains.pluginverifier.results.presentation
 import com.jetbrains.pluginverifier.results.location.ClassLocation
 import com.jetbrains.pluginverifier.results.location.FieldLocation
 import com.jetbrains.pluginverifier.results.location.MethodLocation
-import com.jetbrains.pluginverifier.results.presentation.JvmDescriptorsPresentation.convertFieldSignature
 import com.jetbrains.pluginverifier.results.presentation.JvmDescriptorsPresentation.convertJvmDescriptorToNormalPresentation
+import com.jetbrains.pluginverifier.results.presentation.JvmDescriptorsPresentation.convertTypeSignature
 import com.jetbrains.pluginverifier.results.presentation.JvmDescriptorsPresentation.splitMethodDescriptorOnRawParametersAndReturnTypes
 
 /**
@@ -53,7 +53,7 @@ private fun FieldLocation.toFieldType(fieldTypeOption: FieldTypeOption): String 
     FieldTypeOption.FULL_TYPE -> toFullJavaClassName
   }
   return if (signature.isNotEmpty()) {
-    convertFieldSignature(signature, descriptorConverter)
+    convertTypeSignature(signature, descriptorConverter)
   } else {
     convertJvmDescriptorToNormalPresentation(fieldDescriptor, descriptorConverter)
   }
@@ -81,16 +81,6 @@ private fun ClassLocation.formatHostClass(hostClassOption: HostClassOption): Str
   HostClassOption.FULL_HOST_NAME -> formatClassLocation(ClassOption.FULL_NAME, ClassGenericsSignatureOption.NO_GENERICS)
   HostClassOption.FULL_HOST_WITH_SIGNATURE -> formatClassLocation(ClassOption.FULL_NAME, ClassGenericsSignatureOption.WITH_GENERICS)
 }
-
-val MethodLocation.isConstructor: Boolean
-  get() = methodName == "<init>"
-
-val MethodLocation.methodOrConstructorWord: String
-  get() = if (isConstructor) {
-    "constructor"
-  } else {
-    "method"
-  }
 
 fun MethodLocation.formatMethodLocation(hostClassOption: HostClassOption,
                                         methodParameterTypeOption: MethodParameterTypeOption,
@@ -141,7 +131,7 @@ private fun MethodLocation.methodParametersWithNamesAndReturnType(methodParamete
     MethodReturnTypeOption.NO_RETURN_TYPE -> toSimpleJavaClassName
   }
   val (parametersTypes, returnType) = if (signature.isNotEmpty()) {
-    JvmDescriptorsPresentation.parseMethodSignature(signature, paramsConverter)
+    JvmDescriptorsPresentation.convertMethodSignature(signature, paramsConverter)
   } else {
     val (paramsTs, returnT) = splitMethodDescriptorOnRawParametersAndReturnTypes(methodDescriptor)
     (paramsTs.map { convertJvmDescriptorToNormalPresentation(it, paramsConverter) }) to (convertJvmDescriptorToNormalPresentation(returnT, returnConverter))

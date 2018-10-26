@@ -1,13 +1,14 @@
 package com.jetbrains.plugin.structure.intellij.plugin;
 
-import com.jetbrains.plugin.structure.base.plugin.PluginCreationFail;
-import com.jetbrains.plugin.structure.base.plugin.PluginCreationResult;
-import com.jetbrains.plugin.structure.base.plugin.PluginCreationSuccess;
-import com.jetbrains.plugin.structure.base.plugin.PluginProblem;
+import com.jetbrains.plugin.structure.base.plugin.*;
 import com.jetbrains.plugin.structure.base.problems.InvalidDescriptorProblem;
 import com.jetbrains.plugin.structure.base.problems.PropertyNotSpecified;
 import com.jetbrains.plugin.structure.base.problems.UnableToReadDescriptor;
-import com.jetbrains.plugin.structure.intellij.beans.*;
+import com.jetbrains.plugin.structure.intellij.beans.IdeaVersionBean;
+import com.jetbrains.plugin.structure.intellij.beans.PluginBean;
+import com.jetbrains.plugin.structure.intellij.beans.PluginDependencyBean;
+import com.jetbrains.plugin.structure.intellij.beans.PluginVendorBean;
+import com.jetbrains.plugin.structure.intellij.extractor.PluginBeanExtractor;
 import com.jetbrains.plugin.structure.intellij.problems.*;
 import com.jetbrains.plugin.structure.intellij.utils.StringUtil;
 import com.jetbrains.plugin.structure.intellij.utils.xincludes.JDOMXIncluder;
@@ -46,11 +47,15 @@ final class PluginCreator {
                 @NotNull Document document,
                 @NotNull URL documentUrl,
                 @NotNull XIncludePathResolver pathResolver,
-                @NotNull File actualFile) {
+                @NotNull File actualFile,
+                @NotNull List<PluginIcon> icons) {
     myDescriptorPath = descriptorPath;
     myValidateDescriptor = validateDescriptor;
     myActualFile = actualFile;
     myPlugin = resolveDocumentAndValidateBean(document, documentUrl, pathResolver);
+    if (myPlugin != null) {
+      myPlugin.setIcons(icons);
+    }
   }
 
   PluginCreator(String descriptorPath, PluginProblem singleProblem, File actualFile) {
@@ -335,6 +340,35 @@ final class PluginCreator {
     validatePropertyLength("vendor email", vendorBean.email, MAX_PROPERTY_LENGTH);
   }
 
+  private void validateSinceBuild(@Nullable String sinceBuild) {
+    if (sinceBuild == null) {
+      registerProblem(new SinceBuildNotSpecified(myDescriptorPath));
+    } else {
+      IdeVersion sinceBuildParsed = IdeVersion.createIdeVersionIfValid(sinceBuild);
+      if (sinceBuildParsed == null) {
+        registerProblem(new InvalidSinceBuild(myDescriptorPath, sinceBuild));
+      } else {
+        if (sinceBuildParsed.getBaselineVersion() < 130 && sinceBuild.endsWith(".*")) {
+          registerProblem(new InvalidSinceBuild(myDescriptorPath, sinceBuild));
+        }
+        if (sinceBuildParsed.getBaselineVersion() > 2000) {
+          registerProblem(new ErroneousSinceBuild(myDescriptorPath, sinceBuildParsed));
+        }
+      }
+    }
+  }
+
+  private void validateUntilBuild(@NotNull String untilBuild) {
+    IdeVersion untilBuildParsed = IdeVersion.createIdeVersionIfValid(untilBuild);
+    if (untilBuildParsed == null) {
+      registerProblem(new InvalidUntilBuild(myDescriptorPath, untilBuild));
+    } else {
+      if (untilBuildParsed.getBaselineVersion() > 2000) {
+        registerProblem(new ErroneousUntilBuild(myDescriptorPath, untilBuildParsed));
+      }
+    }
+  }
+
   private void validateIdeaVersion(IdeaVersionBean versionBean) {
     if (versionBean == null) {
       registerProblem(new PropertyNotSpecified("idea-version", myDescriptorPath));
@@ -342,22 +376,11 @@ final class PluginCreator {
     }
 
     String sinceBuild = versionBean.sinceBuild;
-    if (sinceBuild == null) {
-      registerProblem(new SinceBuildNotSpecified(myDescriptorPath));
-    } else {
-      try {
-        IdeVersion sinceBuildParsed = IdeVersion.createIdeVersion(sinceBuild);
-        if (sinceBuildParsed.getBaselineVersion() < 130 && sinceBuild.endsWith(".*")) {
-          registerProblem(new InvalidSinceBuild(myDescriptorPath, sinceBuild));
-        }
-      } catch (Exception e) {
-        registerProblem(new InvalidSinceBuild(myDescriptorPath, sinceBuild));
-      }
-    }
+    validateSinceBuild(sinceBuild);
 
     String untilBuild = versionBean.untilBuild;
-    if (untilBuild != null && !IdeVersion.isValidIdeVersion(untilBuild)) {
-      registerProblem(new InvalidUntilBuild(myDescriptorPath, untilBuild));
+    if (untilBuild != null) {
+      validateUntilBuild(untilBuild);
     }
   }
 

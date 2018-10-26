@@ -5,6 +5,8 @@ import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
 import org.objectweb.asm.tree.*
 
+const val ASM_API_LEVEL = Opcodes.ASM7
+
 @Suppress("UNCHECKED_CAST")
 fun MethodNode.getParameterNames(): List<String> {
   val arguments = Type.getArgumentTypes(desc)
@@ -86,6 +88,8 @@ fun ClassNode.isInterface(): Boolean = access and Opcodes.ACC_INTERFACE != 0
 
 fun ClassNode.isAbstract(): Boolean = access and Opcodes.ACC_ABSTRACT != 0
 
+fun ClassNode.isPrivate(): Boolean = access and Opcodes.ACC_PRIVATE != 0
+
 fun MethodNode.isPrivate(): Boolean = access and Opcodes.ACC_PRIVATE != 0
 
 fun FieldNode.isPrivate(): Boolean = access and Opcodes.ACC_PRIVATE != 0
@@ -122,14 +126,48 @@ fun FieldNode.isStatic(): Boolean = access and Opcodes.ACC_STATIC != 0
 
 fun ClassNode.isSuperFlag(): Boolean = access and Opcodes.ACC_SUPER != 0
 
+fun ClassNode.isSynthetic(): Boolean = access and Opcodes.ACC_SYNTHETIC != 0
+
 fun MethodNode.isSynthetic(): Boolean = access and Opcodes.ACC_SYNTHETIC != 0
+
+fun FieldNode.isSynthetic(): Boolean = access and Opcodes.ACC_SYNTHETIC != 0
 
 fun MethodNode.isBridgeMethod(): Boolean = access and Opcodes.ACC_BRIDGE != 0
 
 fun haveTheSamePackage(first: ClassNode, second: ClassNode): Boolean = extractPackage(first.name) == extractPackage(second.name)
 
 @Suppress("UNCHECKED_CAST")
-fun ClassNode.getInvisibleAnnotations() = (invisibleAnnotations as? List<AnnotationNode>).orEmpty()
+fun ClassNode.getInvisibleAnnotations() = invisibleAnnotations as? List<AnnotationNode>
+
+@Suppress("UNCHECKED_CAST")
+fun MethodNode.getInvisibleAnnotations() = invisibleAnnotations as? List<AnnotationNode>
+
+@Suppress("UNCHECKED_CAST")
+fun FieldNode.getInvisibleAnnotations() = invisibleAnnotations as? List<AnnotationNode>
+
+@Suppress("UNCHECKED_CAST")
+fun ClassNode.getFields() = fields as? List<FieldNode>
+
+@Suppress("UNCHECKED_CAST")
+fun ClassNode.getMethods() = methods as? List<MethodNode>
+
+@Suppress("UNCHECKED_CAST")
+fun ClassNode.getInterfaces() = interfaces as? List<String>
+
+fun List<AnnotationNode>.findAnnotation(className: String): AnnotationNode? =
+    find { it.desc?.extractClassNameFromDescr() == className }
+
+fun AnnotationNode.getAnnotationValue(key: String): Any? {
+  val vls = values ?: return null
+  for (i in 0 until vls.size / 2) {
+    val k = vls[i * 2]
+    val v = vls[i * 2 + 1]
+    if (k == key) {
+      return v
+    }
+  }
+  return null
+}
 
 /**
  * Access Control

@@ -4,8 +4,9 @@ import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
 import com.jetbrains.plugin.structure.intellij.version.IdeVersion
 import com.jetbrains.pluginverifier.misc.createOkHttpClient
-import com.jetbrains.pluginverifier.network.createByteArrayRequestBody
+import com.jetbrains.pluginverifier.network.byteArrayMediaType
 import com.jetbrains.pluginverifier.network.executeSuccessfully
+import com.jetbrains.pluginverifier.network.stringMediaType
 import com.jetbrains.pluginverifier.repository.repositories.marketplace.MarketplaceRepository
 import com.jetbrains.pluginverifier.repository.repositories.marketplace.UpdateInfo
 import com.jetbrains.pluginverifier.results.VerificationResult
@@ -18,6 +19,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.*
 import java.util.concurrent.TimeUnit
+
 
 class DefaultVerifierServiceProtocol(
     authorizationData: AuthorizationData,
@@ -51,9 +53,20 @@ class DefaultVerifierServiceProtocol(
           }
 
   override fun sendVerificationResult(verificationResult: VerificationResult, updateInfo: UpdateInfo) {
+    val verificationResponse = verificationResult.prepareVerificationResponse(updateInfo)
+    retrofitConnector.uploadVerificationResultContent(
+        authorizationToken,
+        updateInfo.updateId,
+        verificationResponse.ideVersion,
+        RequestBody.create(byteArrayMediaType, verificationResponse.toByteArray())
+    ).executeSuccessfully()
+
     retrofitConnector.sendVerificationResult(
-        createByteArrayRequestBody(verificationResult.prepareVerificationResponse(updateInfo).toByteArray()),
-        authorizationToken
+        authorizationToken,
+        updateInfo.updateId,
+        RequestBody.create(stringMediaType, verificationResponse.ideVersion),
+        RequestBody.create(stringMediaType, verificationResult.verificationVerdict),
+        RequestBody.create(stringMediaType, verificationResponse.resultType.name)
     ).executeSuccessfully()
   }
 
@@ -64,11 +77,22 @@ private interface VerifierRetrofitConnector {
   @GET("/verification/getScheduledVerifications")
   fun getScheduledVerifications(@Header("Authorization") authorization: String): Call<List<ScheduledVerificationJson>>
 
+  @PUT("/verification/uploadVerificationResultContent")
+  fun uploadVerificationResultContent(
+      @Header("Authorization") authorization: String,
+      @Query("updateId") updateId: Int,
+      @Query("ideVersion") ideVersion: String,
+      @Body content: RequestBody
+  ): Call<ResponseBody>
+
   @POST("/verification/receiveVerificationResult")
   @Multipart
   fun sendVerificationResult(
-      @Part("verificationResult") verificationResult: RequestBody,
-      @Header("Authorization") authorization: String
+      @Header("Authorization") authorization: String,
+      @Part("updateId") updateId: Int,
+      @Part("ideVersion") ideVersion: RequestBody,
+      @Part("verdict") verdict: RequestBody,
+      @Part("resultType") resultType: RequestBody
   ): Call<ResponseBody>
 
 }
