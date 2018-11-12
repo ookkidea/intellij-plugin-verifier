@@ -39,9 +39,10 @@ sealed class ApiSignature {
 /**
  * Signature of an API class, consisting of its fully qualified name.
  */
-data class ClassSignature(val className: String) : ApiSignature() {
-  override val packageName: String
-    get() = className.getPackageName()
+data class ClassSignature(
+    override val packageName: String,
+    val className: String
+) : ApiSignature() {
 
   override val externalPresentation: String
     get() = className
@@ -52,13 +53,12 @@ data class ClassSignature(val className: String) : ApiSignature() {
  * method name, and generified signatures of the parameters and return type.
  */
 data class MethodSignature(
+    override val packageName: String,
     val hostClass: String,
     val methodName: String,
     val returnType: String?,
     val paramsSignature: String
 ) : ApiSignature() {
-  override val packageName: String
-    get() = hostClass.getPackageName()
 
   override val externalPresentation: String
     get() = hostClass +
@@ -74,11 +74,10 @@ data class MethodSignature(
  * and field name.
  */
 data class FieldSignature(
+    override val packageName: String,
     val hostClass: String,
     val fieldName: String
 ) : ApiSignature() {
-  override val packageName: String
-    get() = hostClass.getPackageName()
 
   override val externalPresentation: String
     get() = "$hostClass $fieldName"

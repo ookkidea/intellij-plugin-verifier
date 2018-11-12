@@ -48,8 +48,8 @@ class SinceApiReader(private val annotationsRoot: Path) : Closeable {
             annotationsRoot.toFile(),
             NameFileFilter(ANNOTATIONS_XML_FILE_NAME),
             TrueFileFilter.INSTANCE
-        ).map { it.toPath() }
-        FilesXmlReaderSequence(xmlFiles)
+        ).map { it.toPath().toAbsolutePath() }
+        FilesXmlReaderSequence(annotationsRoot.toAbsolutePath(), xmlFiles)
       }
 
   /**
@@ -79,20 +79,19 @@ class SinceApiReader(private val annotationsRoot: Path) : Closeable {
    */
   private fun readNextSignature(): Pair<ApiSignature, IdeVersion>? {
     while (true) {
-      currentXmlReader = if (currentXmlReader == null) {
-        if (xmlReaderSequence.hasNext()) {
-          xmlReaderSequence.next()
-        } else {
+      if (currentXmlReader == null) {
+        currentXmlReader = xmlReaderSequence.getNextReader()
+        if (currentXmlReader == null) {
           return null
         }
+      }
+
+      val nextSignature = currentXmlReader!!.readNextSignature()
+      if (nextSignature != null) {
+        return nextSignature
       } else {
-        val nextSignature = currentXmlReader!!.readNextSignature()
-        if (nextSignature != null) {
-          return nextSignature
-        } else {
-          currentXmlReader?.closeLogged()
-          null
-        }
+        currentXmlReader!!.closeLogged()
+        currentXmlReader = null
       }
     }
   }
@@ -112,37 +111,41 @@ class SinceApiReader(private val annotationsRoot: Path) : Closeable {
  * On [close], all allocated resources will be released. For [ZipXmlReaderSequence]
  * the ZipFile will be closed.
  */
-private interface XmlReaderSequence : Iterator<SinceApiXmlReader>, Closeable
+private interface XmlReaderSequence : Closeable {
+  fun getNextReader(): SinceApiXmlReader?
+}
 
-private class FilesXmlReaderSequence(files: List<Path>) : XmlReaderSequence {
+private class FilesXmlReaderSequence(
+    private val annotationsRoot: Path,
+    xmlFiles: List<Path>
+) : XmlReaderSequence {
 
-  private val filesIterator = files.iterator()
+  private val filesIterator = xmlFiles.iterator()
 
-  private var currentReader: SinceApiXmlReader? = null
-
-  override fun hasNext(): Boolean {
+  override fun getNextReader(): SinceApiXmlReader? {
     if (filesIterator.hasNext()) {
       val nextFile = filesIterator.next()
-      currentReader = Files.newBufferedReader(nextFile).closeOnException {
-        SinceApiXmlReader(it)
+      val packageName = annotationsRoot
+          .toAbsolutePath()
+          .relativize(nextFile.toAbsolutePath())
+          .toString()
+          .toSystemIndependentName()
+          .substringBeforeLast('/', "")
+          .replace('/', '.')
+
+      return Files.newBufferedReader(nextFile).closeOnException {
+        SinceApiXmlReader(packageName, it)
       }
-      return true
     }
-    return false
+    return null
   }
 
-  override fun next() = currentReader!!
-
-  override fun close() {
-    currentReader?.closeLogged()
-  }
+  override fun close() = Unit
 }
 
 private class ZipXmlReaderSequence(val zipFile: ZipFile) : XmlReaderSequence {
 
   private val zipEntries = zipFile.entries()
-
-  private var currentReader: SinceApiXmlReader? = null
 
   private fun getNextXmlEntry(): ZipEntry? {
     while (zipEntries.hasMoreElements()) {
@@ -154,19 +157,20 @@ private class ZipXmlReaderSequence(val zipFile: ZipFile) : XmlReaderSequence {
     return null
   }
 
-  override fun next(): SinceApiXmlReader = currentReader!!
-
-  override fun hasNext(): Boolean {
-    val xmlEntry = getNextXmlEntry() ?: return false
-    currentReader = zipFile.getInputStream(xmlEntry).bufferedReader().closeOnException {
-      SinceApiXmlReader(it)
+  override fun getNextReader(): SinceApiXmlReader? {
+    val xmlEntry = getNextXmlEntry() ?: return null
+    val packageName = xmlEntry.name
+        .toSystemIndependentName()
+        .trimStart('/')
+        .substringBeforeLast("/")
+        .replace('/', '.')
+    return zipFile.getInputStream(xmlEntry).bufferedReader().closeOnException {
+      SinceApiXmlReader(packageName, it)
     }
-    return true
   }
 
   override fun close() {
-    currentReader?.closeLogged()
-    zipFile.closeLogged()
+    zipFile.close()
   }
 
 }

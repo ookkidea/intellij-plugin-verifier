@@ -26,21 +26,3 @@ data class SinceApiData(val versionToApiData: Map<IdeVersion, ApiData>) {
       versionToApiData.values.any { apiSignature in it }
 
 }
-
-/**
- * Builds a new [SinceApiData] that contains all APIs
- * from `this` and `other` data.
- */
-infix operator fun SinceApiData.plus(other: SinceApiData): SinceApiData {
-  val merged = mutableMapOf<IdeVersion, ApiData>()
-  merged.putAll(versionToApiData)
-  for ((version, apiData) in other.versionToApiData) {
-    val data = merged[version]
-    if (data != null) {
-      data.mergeWith(apiData)
-    } else {
-      merged[version] = apiData
-    }
-  }
-  return SinceApiData(merged)
-}

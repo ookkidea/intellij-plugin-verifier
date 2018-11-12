@@ -11,9 +11,12 @@ import javax.xml.stream.XMLInputFactory
 import javax.xml.stream.XMLStreamReader
 
 /**
- * Utility class used to read `annotations.xml` files.
+ * Utility class used to read `annotations.xml` files corresponding to package [packageName].
  */
-class SinceApiXmlReader(private val reader: Reader) : Closeable {
+class SinceApiXmlReader(
+    private val packageName: String,
+    private val reader: Reader
+) : Closeable {
 
   private companion object {
     val xmlInputFactory: XMLInputFactory by lazy {
@@ -43,7 +46,7 @@ class SinceApiXmlReader(private val reader: Reader) : Closeable {
           "item" -> {
             checkEquals("name", xmlInput.getAttributeLocalName(0))
             val itemName = xmlInput.getAttributeValue(0).unescapeHtml()
-            apiSignature = parseApiSignature(itemName)
+            apiSignature = parseApiSignature(packageName, itemName)
           }
           "annotation" -> {
             checkEquals("name", xmlInput.getAttributeLocalName(0))

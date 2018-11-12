@@ -12,29 +12,16 @@ import org.apache.commons.text.StringEscapeUtils
 import org.objectweb.asm.signature.SignatureReader
 
 /**
- * Returns package name of a fully qualified class name.
- *
- * It attempts to recognise inner/nested classes,
- * by checking whether the first letter is capital or not,
- * but may fail to do so, if the package is named with
- * capital letter for some reason.
- */
-fun String.getPackageName(): String {
-  if ('.' !in this) {
-    return ""
-  }
-  for (index in indices) {
-    if (get(index) == '.' && index + 1 < length && get(index + 1).isUpperCase()) {
-      return substring(0, index)
-    }
-  }
-  return substringBeforeLast(".", "")
-}
-
-/**
  * Escapes HTML characters in `this` String.
  */
 fun String.escapeHtml(): String = StringEscapeUtils.escapeHtml4(this)
+
+/**
+ * Returns Java package name (with dots '.') of a fully qualified
+ * class name in binary format (with '/' and '$').
+ */
+fun String.getJavaPackageNameByJvmClassName(): String =
+    substringBeforeLast("/", "").replace('/', '.')
 
 /**
  * Unescapes HTML characters in `this` String.
@@ -43,10 +30,12 @@ fun String.unescapeHtml(): String = StringEscapeUtils.unescapeHtml4(this)
 
 
 fun ClassLocation.toSignature(): ClassSignature =
-    ClassSignature(toFullJavaClassName(className))
+    ClassSignature(
+        className.getJavaPackageNameByJvmClassName(),
+        toFullJavaClassName(className)
+    )
 
 fun MethodLocation.toSignature(): MethodSignature {
-  val hostName = toFullJavaClassName(hostClass.className)
   var methodName: String = methodName
   var retType: String? = null
 
@@ -77,7 +66,8 @@ fun MethodLocation.toSignature(): MethodSignature {
 
   val paramsSignatures = paramTypes.drop(if (dropFirstParameter) 1 else 0).joinToString()
   return MethodSignature(
-      hostName,
+      hostClass.className.getJavaPackageNameByJvmClassName(),
+      toFullJavaClassName(hostClass.className),
       methodName,
       retType,
       paramsSignatures
@@ -85,7 +75,11 @@ fun MethodLocation.toSignature(): MethodSignature {
 }
 
 fun FieldLocation.toSignature() =
-    FieldSignature(toFullJavaClassName(hostClass.className), fieldName)
+    FieldSignature(
+        hostClass.className.getJavaPackageNameByJvmClassName(),
+        toFullJavaClassName(hostClass.className),
+        fieldName
+    )
 
 private fun MethodLocation.convertMethodSignature(): Pair<List<String>, String> {
   return if (signature.isNotEmpty()) {
@@ -122,8 +116,9 @@ private fun MethodLocation.convertMethodSignature(): Pair<List<String>, String> 
  * Converts the external name, which might be obtained
  * in [ApiSignature.externalPresentation],
  * to the original API signature.
+ * [packageName] is the package that this element belongs to.
  */
-fun parseApiSignature(externalName: String): ApiSignature {
+fun parseApiSignature(packageName: String, externalName: String): ApiSignature {
   if ('(' in externalName) {
     /**
      * This is a method signature, like
@@ -136,7 +131,7 @@ fun parseApiSignature(externalName: String): ApiSignature {
     val methodName = externalName.substringBefore('(').substringAfterLast(' ')
     val returnType = externalName.substringAfter("$className ", "").substringBefore(" $methodName(", "").takeIf { it.isNotEmpty() }
     val paramSignatures = externalName.substringAfter('(').substringBefore(')')
-    return MethodSignature(className, methodName, returnType, paramSignatures)
+    return MethodSignature(packageName, className, methodName, returnType, paramSignatures)
   }
   if (' ' in externalName) {
     /**
@@ -145,8 +140,8 @@ fun parseApiSignature(externalName: String): ApiSignature {
      */
     val className = externalName.substringBefore(' ')
     val fieldName = externalName.substringAfter(' ')
-    return FieldSignature(className, fieldName)
+    return FieldSignature(packageName, className, fieldName)
   }
-  return ClassSignature(externalName)
+  return ClassSignature(packageName, externalName)
 }
 
